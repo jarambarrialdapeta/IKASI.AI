@@ -26,6 +26,15 @@ export interface TaskItem {
   category: 'work' | 'coordination' | 'event';
 }
 
+export interface Exercise {
+  id: string;
+  title: string;
+  description: string;
+  category: 'ulermena' | 'idazmena' | 'gramatika' | 'lexikoa';
+  status: 'draft' | 'published';
+  date: string;
+}
+
 export interface DashboardData {
   classes: ClassGroup[];
   schedule: ScheduleItem[];

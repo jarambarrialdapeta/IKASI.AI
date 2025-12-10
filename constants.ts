@@ -1,4 +1,4 @@
-import { ClassGroup, ScheduleItem, TaskItem } from './types';
+import { ClassGroup, ScheduleItem, TaskItem, StudentDetail } from './types';
 
 export const MOCK_CLASSES: ClassGroup[] = [
   {
@@ -6,14 +6,14 @@ export const MOCK_CLASSES: ClassGroup[] = [
     name: 'LH 5.A - Matematika',
     averageGrade: 7.8,
     students: [
-      { id: '1', name: 'Mikel Agirre', status: 'present' },
-      { id: '2', name: 'Ane Etxebarria', status: 'present' },
-      { id: '3', name: 'Jon Zabaleta', status: 'present' },
-      { id: '4', name: 'Maite Ibarra', status: 'present' },
-      { id: '5', name: 'Unai Goikoetxea', status: 'present' },
-      { id: '6', name: 'Irati Otegi', status: 'present' },
-      { id: '7', name: 'Oier Mendizabal', status: 'present' },
-      { id: '8', name: 'Uxue Arriola', status: 'present' },
+      { id: '1', name: 'Mikel Agirre', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=1' },
+      { id: '2', name: 'Ane Etxebarria', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=2' },
+      { id: '3', name: 'Jon Zabaleta', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=3' },
+      { id: '4', name: 'Maite Ibarra', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=4' },
+      { id: '5', name: 'Unai Goikoetxea', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=5' },
+      { id: '6', name: 'Irati Otegi', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=6' },
+      { id: '7', name: 'Oier Mendizabal', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=7' },
+      { id: '8', name: 'Uxue Arriola', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=8' },
     ],
   },
   {
@@ -21,10 +21,10 @@ export const MOCK_CLASSES: ClassGroup[] = [
     name: 'LH 5.B - Euskara',
     averageGrade: 6.9,
     students: [
-      { id: '11', name: 'Iker Larrañaga', status: 'present' },
-      { id: '12', name: 'Nerea Azurmendi', status: 'present' },
-      { id: '13', name: 'Aitor Egiguren', status: 'present' },
-      { id: '14', name: 'Leire Garmendia', status: 'present' },
+      { id: '11', name: 'Iker Larrañaga', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=11' },
+      { id: '12', name: 'Nerea Azurmendi', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=12' },
+      { id: '13', name: 'Aitor Egiguren', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=13' },
+      { id: '14', name: 'Leire Garmendia', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=14' },
     ],
   },
   {
@@ -32,11 +32,11 @@ export const MOCK_CLASSES: ClassGroup[] = [
     name: 'LH 6.A - Tutoretza',
     averageGrade: 8.2,
     students: [
-      { id: '21', name: 'Eneko Urrutia', status: 'present' },
-      { id: '22', name: 'Haizea Bilbao', status: 'present' },
-      { id: '23', name: 'Julen Elorza', status: 'present' },
-      { id: '24', name: 'Amaia Uriarte', status: 'present' },
-      { id: '25', name: 'Markel Zubizarreta', status: 'present' },
+      { id: '21', name: 'Eneko Urrutia', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=21' },
+      { id: '22', name: 'Haizea Bilbao', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=22' },
+      { id: '23', name: 'Julen Elorza', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=23' },
+      { id: '24', name: 'Amaia Uriarte', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=24' },
+      { id: '25', name: 'Markel Zubizarreta', status: 'present', photoUrl: 'https://i.pravatar.cc/150?u=25' },
     ],
   },
 ];
@@ -56,3 +56,36 @@ export const INITIAL_TASKS: TaskItem[] = [
   { id: 't4', text: 'Kilo kanpainako oharra bidali gurasoei', completed: false, category: 'event' },
   { id: 't5', text: 'Mikel-en gurasoekin hitzordua', completed: false, category: 'coordination' },
 ];
+
+// Mock Detail Data for a specific student (applied to whichever is selected for demo)
+export const MOCK_STUDENT_STATS: StudentDetail = {
+  id: '1',
+  name: 'Mikel Agirre',
+  status: 'present',
+  photoUrl: 'https://i.pravatar.cc/150?u=1',
+  evolution: [
+    { month: 'Ira', grade: 6.5 },
+    { month: 'Urr', grade: 7.0 },
+    { month: 'Aza', grade: 6.8 },
+    { month: 'Abe', grade: 7.5 },
+    { month: 'Urt', grade: 7.2 },
+    { month: 'Ots', grade: 8.0 },
+  ],
+  weaknesses: [
+    'Zatikiak (Matematika)',
+    'Aditz trinkoak (Euskara)',
+    'Ahoskera (Ingelesa)'
+  ],
+  strengths: [
+    'Geometria',
+    'Ahozko ulermena',
+    'Talde lana'
+  ],
+  statsBySubject: [
+    { subject: 'Matematika', grade: 7.5, avgTimeSpent: 45, completedExercises: 12 },
+    { subject: 'Euskara', grade: 8.2, avgTimeSpent: 30, completedExercises: 15 },
+    { subject: 'Ingelesa', grade: 6.8, avgTimeSpent: 25, completedExercises: 8 },
+    { subject: 'Ingurunea', grade: 7.9, avgTimeSpent: 20, completedExercises: 10 },
+  ],
+  teacherNotes: "Mikel oso ikasle langilea da, baina matematikako buruketekin laguntza behar du. Arreta mantentzea kostatzen zaio arratsaldeetan."
+};

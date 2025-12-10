@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Check, X, Clock } from 'lucide-react';
+import { Users, Check, X, Clock, ArrowDownAZ } from 'lucide-react';
 import { Student } from '../types';
 
 interface AttendanceWidgetProps {
@@ -7,11 +7,20 @@ interface AttendanceWidgetProps {
 }
 
 const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({ students: initialStudents }) => {
-  const [studentStates, setStudentStates] = useState<Student[]>(initialStudents);
+  const [studentStates, setStudentStates] = useState<Student[]>([]);
+
+  // Sort by Surname helper
+  const sortBySurname = (students: Student[]) => {
+    return [...students].sort((a, b) => {
+      const surnameA = a.name.split(' ').slice(-1)[0]; // Takes last word as surname
+      const surnameB = b.name.split(' ').slice(-1)[0];
+      return surnameA.localeCompare(surnameB);
+    });
+  };
 
   // Update internal state when props change (class switch)
   useEffect(() => {
-    setStudentStates(initialStudents);
+    setStudentStates(sortBySurname(initialStudents));
   }, [initialStudents]);
 
   const updateStatus = (id: string, status: Student['status']) => {
@@ -34,8 +43,9 @@ const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({ students: initialSt
             <Users className="w-5 h-5 text-indigo-500" />
             Asistentzia
           </h2>
-          <span className="text-xs font-semibold px-2 py-1 bg-slate-100 text-slate-600 rounded">
-            Guztiak: {studentStates.length}
+          <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 bg-slate-100 text-slate-500 rounded uppercase tracking-wider">
+             <ArrowDownAZ className="w-3 h-3" />
+             A-Z
           </span>
         </div>
         
@@ -58,7 +68,7 @@ const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({ students: initialSt
 
       <div className="flex-1 overflow-y-auto">
         <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200 sticky top-0">
+          <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200 sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3">Ikaslea</th>
               <th className="px-4 py-3 text-right">Egoera</th>
@@ -66,15 +76,24 @@ const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({ students: initialSt
           </thead>
           <tbody className="divide-y divide-slate-100">
             {studentStates.map((student) => (
-              <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3 font-medium text-slate-700">{student.name}</td>
+              <tr key={student.id} className="hover:bg-slate-50 transition-colors group">
                 <td className="px-4 py-3">
-                  <div className="flex justify-end gap-1">
+                    <div className="flex items-center gap-3">
+                        <img 
+                            src={student.photoUrl || `https://ui-avatars.com/api/?name=${student.name}&background=random`} 
+                            alt={student.name}
+                            className="w-8 h-8 rounded-full border border-slate-200 object-cover" 
+                        />
+                        <span className="font-medium text-slate-700">{student.name}</span>
+                    </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => updateStatus(student.id, 'present')}
                       className={`p-1.5 rounded-md transition-all ${
                         student.status === 'present' 
-                        ? 'bg-emerald-100 text-emerald-700 shadow-sm ring-1 ring-emerald-200' 
+                        ? 'bg-emerald-100 text-emerald-700 shadow-sm ring-1 ring-emerald-200 opacity-100' 
                         : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
                       }`}
                       title="Bertan"
@@ -85,7 +104,7 @@ const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({ students: initialSt
                       onClick={() => updateStatus(student.id, 'late')}
                       className={`p-1.5 rounded-md transition-all ${
                         student.status === 'late' 
-                        ? 'bg-amber-100 text-amber-700 shadow-sm ring-1 ring-amber-200' 
+                        ? 'bg-amber-100 text-amber-700 shadow-sm ring-1 ring-amber-200 opacity-100' 
                         : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
                       }`}
                       title="Berandu"
@@ -96,7 +115,7 @@ const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({ students: initialSt
                       onClick={() => updateStatus(student.id, 'absent')}
                       className={`p-1.5 rounded-md transition-all ${
                         student.status === 'absent' 
-                        ? 'bg-rose-100 text-rose-700 shadow-sm ring-1 ring-rose-200' 
+                        ? 'bg-rose-100 text-rose-700 shadow-sm ring-1 ring-rose-200 opacity-100' 
                         : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
                       }`}
                       title="Falta"

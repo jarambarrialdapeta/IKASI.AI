@@ -2,6 +2,7 @@ export interface Student {
   id: string;
   name: string;
   status: 'present' | 'absent' | 'late';
+  photoUrl?: string; // New field for avatar
 }
 
 export interface ClassGroup {
@@ -30,7 +31,7 @@ export interface Exercise {
   id: string;
   title: string;
   description: string;
-  category: 'ulermena' | 'idazmena' | 'gramatika' | 'lexikoa';
+  category: 'ulermena' | 'idazmena' | 'gramatika' | 'lexikoa' | 'kalkulu_mentala' | 'aritmetika' | 'buruketak';
   status: 'draft' | 'published';
   date: string;
 }
@@ -39,4 +40,20 @@ export interface DashboardData {
   classes: ClassGroup[];
   schedule: ScheduleItem[];
   tasks: TaskItem[];
+}
+
+// New Types for Student Details
+export interface StudentStats {
+  subject: string;
+  grade: number;
+  avgTimeSpent: number; // in minutes
+  completedExercises: number;
+}
+
+export interface StudentDetail extends Student {
+  evolution: { month: string; grade: number }[];
+  weaknesses: string[];
+  strengths: string[];
+  statsBySubject: StudentStats[];
+  teacherNotes: string;
 }

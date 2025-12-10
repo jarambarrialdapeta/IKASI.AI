@@ -57,3 +57,11 @@ export interface StudentDetail extends Student {
   statsBySubject: StudentStats[];
   teacherNotes: string;
 }
+
+// New Type for Calendar
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  type: 'exam' | 'holiday' | 'assignment' | 'meeting';
+}

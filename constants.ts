@@ -1,4 +1,4 @@
-import { ClassGroup, ScheduleItem, TaskItem, StudentDetail } from './types';
+import { ClassGroup, ScheduleItem, TaskItem, StudentDetail, CalendarEvent } from './types';
 
 export const MOCK_CLASSES: ClassGroup[] = [
   {
@@ -89,3 +89,18 @@ export const MOCK_STUDENT_STATS: StudentDetail = {
   ],
   teacherNotes: "Mikel oso ikasle langilea da, baina matematikako buruketekin laguntza behar du. Arreta mantentzea kostatzen zaio arratsaldeetan."
 };
+
+// Get current year and month for calendar mock data
+const now = new Date();
+const currentYear = now.getFullYear();
+const currentMonth = now.getMonth() + 1;
+const monthStr = currentMonth < 10 ? `0${currentMonth}` : `${currentMonth}`;
+
+export const MOCK_EVENTS: CalendarEvent[] = [
+  { id: 'e1', title: 'Matematika Azterketa', date: `${currentYear}-${monthStr}-15`, type: 'exam' },
+  { id: 'e2', title: 'Jai Eguna (Zubia)', date: `${currentYear}-${monthStr}-12`, type: 'holiday' },
+  { id: 'e3', title: 'Muralaren Aurkezpena', date: `${currentYear}-${monthStr}-22`, type: 'assignment' },
+  { id: 'e4', title: 'Guraso Bilera', date: `${currentYear}-${monthStr}-05`, type: 'meeting' },
+  { id: 'e5', title: 'Euskara Eguna', date: `${currentYear}-${monthStr}-03`, type: 'holiday' },
+  { id: 'e6', title: 'Ingeleseko Proiektua', date: `${currentYear}-${monthStr}-28`, type: 'assignment' },
+];

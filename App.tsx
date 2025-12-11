@@ -6,14 +6,15 @@ import ScheduleWidget from './components/ScheduleWidget';
 import AgendaWidget from './components/AgendaWidget';
 import AttendanceWidget from './components/AttendanceWidget';
 import { MOCK_CLASSES, TODAY_SCHEDULE, INITIAL_TASKS, MOCK_STUDENT_STATS, MOCK_EVENTS } from './constants';
-import { Exercise } from './types';
+import { Exercise, Meeting } from './types';
 import { 
   BookOpen, Calendar, Users, Settings, Database, Calculator, 
   Globe, Languages, Book, HardDrive, ArrowLeft, Ear, PenTool, 
   BookType, WholeWord, Plus, FileText, Send, MoreVertical, X,
   Upload, List, HelpCircle, CheckSquare, Sparkles, Brain, Sigma, Puzzle,
   TrendingUp, AlertCircle, Clock, Save, FileDown, Search, BarChart3, Layout,
-  Table, ChevronLeft, ChevronRight, Bot, Trash2, PieChart as PieChartIcon, Activity
+  Table, ChevronLeft, ChevronRight, Bot, Trash2, PieChart as PieChartIcon, Activity,
+  MessageSquare, Mic, FileAudio, CheckCircle, Filter, Library, Layers, GraduationCap, Network
 } from 'lucide-react';
 import { 
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -28,6 +29,16 @@ interface Assignment {
   maxScore: number;
 }
 
+// Types for the Exercise Bank
+interface BankExercise {
+  id: string;
+  subject: string;
+  area: string; // Alorra
+  topic: string; // Gaia
+  title: string;
+  difficulty: 'Erraza' | 'Ertaina' | 'Zaila';
+}
+
 const App: React.FC = () => {
   const [selectedClassId, setSelectedClassId] = useState<string>(MOCK_CLASSES[0].id);
   const [currentView, setCurrentView] = useState<string>('dashboard');
@@ -38,12 +49,43 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('ulermena');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  // Exercise Builder State
+  const [builderSubject, setBuilderSubject] = useState<string>('');
+  const [builderArea, setBuilderArea] = useState<string>('');
+  const [builderTopic, setBuilderTopic] = useState<string>('');
+  const [selectedBankExercises, setSelectedBankExercises] = useState<BankExercise[]>([]);
+
   // Student Detail State
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [studentViewMode, setStudentViewMode] = useState<'general' | 'subjects'>('general');
+  const [studentViewMode, setStudentViewMode] = useState<'general' | 'subjects' | 'sociogram'>('general');
   const [selectedStudentSubject, setSelectedStudentSubject] = useState<string>('Matematika');
   const [teacherNote, setTeacherNote] = useState(MOCK_STUDENT_STATS.teacherNotes);
   const [isAiGenerating, setIsAiGenerating] = useState(false); // AI State
+
+  // Meetings State
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [meetings, setMeetings] = useState<Meeting[]>([
+    { 
+      id: 'm1', 
+      title: 'Zikloko Koordinazioa', 
+      date: '2023-10-24', 
+      type: 'coordination', 
+      participants: ['Ana', 'Jon', 'Mikel'],
+      status: 'completed',
+      summary: 'Datorren asteko txangoa antolatu dugu. Autobusa 9:00etan aterako da. Gurasoen baimenak ostiralerako jaso behar dira.'
+    },
+    { 
+      id: 'm2', 
+      title: 'Guraso Bilera - 5. Maila', 
+      date: '2023-10-20', 
+      type: 'parents', 
+      participants: ['Guraso Ordezkariak'],
+      status: 'completed',
+      summary: 'Jantokiko arautegiaren inguruko kezkak azaldu dituzte. Gabonetako jaialdirako laguntza eskatu dute.'
+    }
+  ]);
+  const [newMeetingSummary, setNewMeetingSummary] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   // Gradebook State (Dynamic Columns)
   const [assignments, setAssignments] = useState<Assignment[]>([
@@ -64,6 +106,34 @@ const App: React.FC = () => {
     { id: '4', title: 'Biderketa taulak errepasatzen', description: '3, 4 eta 6ko taulak', category: 'aritmetika', status: 'published', date: '2023-10-26' },
   ]);
 
+  // DATA BANK STRUCTURE
+  const SUBJECT_HIERARCHY: any = {
+    'Matematika': {
+      'Aritmetika': ['Zatikiak', 'Zenbaki Hamartarrak', 'Eragiketak'],
+      'Geometria': ['Angeluak', 'Poligonoak', 'Perimetroa'],
+      'Neurriak': ['Luzera', 'Pisua', 'Edukiera']
+    },
+    'Euskara': {
+      'Ulermena': ['Idatzizko Ulermena', 'Entzumena'],
+      'Gramatika': ['Aditzak', 'Deklinabidea', 'Sintaxia'],
+      'Idazmena': ['Deskribapena', 'Iritzi Testua']
+    },
+    'Ingelesa': {
+      'Writing': ['Description', 'Letter', 'Story'],
+      'Grammar': ['Present Simple', 'Past Continuous'],
+      'Vocabulary': ['Animals', 'House', 'School']
+    }
+  };
+
+  const BANK_EXERCISES: BankExercise[] = [
+    { id: 'b1', subject: 'Matematika', area: 'Aritmetika', topic: 'Zatikiak', title: 'Zatiki baliokideak bilatu', difficulty: 'Erraza' },
+    { id: 'b2', subject: 'Matematika', area: 'Aritmetika', topic: 'Zatikiak', title: 'Zatikien batuketak', difficulty: 'Ertaina' },
+    { id: 'b3', subject: 'Euskara', area: 'Ulermena', topic: 'Idatzizko Ulermena', title: 'Testuaren ideia nagusia', difficulty: 'Ertaina' },
+    { id: 'b4', subject: 'Ingelesa', area: 'Writing', topic: 'Description', title: 'Describe your best friend', difficulty: 'Erraza' },
+    { id: 'b5', subject: 'Matematika', area: 'Geometria', topic: 'Angeluak', title: 'Angelu motak sailkatu', difficulty: 'Erraza' },
+    { id: 'b6', subject: 'Euskara', area: 'Gramatika', topic: 'Aditzak', title: 'NOR-NORI orainaldian', difficulty: 'Zaila' },
+  ];
+
   const selectedClass = MOCK_CLASSES.find(c => c.id === selectedClassId) || MOCK_CLASSES[0];
 
   const getViewTitle = () => {
@@ -72,6 +142,7 @@ const App: React.FC = () => {
       case 'subjects': return selectedSubject ? selectedSubject : 'Ikasgaiak';
       case 'students': return 'Ikasleen Jarraipena';
       case 'calendar': return 'Egutegia';
+      case 'meetings': return 'Bilerak eta Aktak';
       case 'settings': return 'Ezarpenak';
       default: return 'Arbela';
     }
@@ -109,6 +180,31 @@ const App: React.FC = () => {
     }, 2000);
   };
 
+  const generateMeetingSummary = () => {
+    setIsTranscribing(true);
+    setTimeout(() => {
+        setNewMeetingSummary(`BILERA LABURPENA\n\n1. Gai nagusia: Datorren asteko ebaluazioa.\n2. Erabakiak:\n   - Azterketa eguna aldatu (Ostegunera).\n   - Gurasoei oharra bidali.\n3. Hurrengo urratsak:\n   - Materiala prestatu astelehenerako.\n   - Zuzendaritzarekin hitz egin gelako proiektorearen inguruan.`);
+        setIsTranscribing(false);
+    }, 2500);
+  };
+
+  const handleCreateMeeting = (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const formData = new FormData(e.currentTarget);
+      const newMeeting: Meeting = {
+          id: Date.now().toString(),
+          title: formData.get('title') as string,
+          date: new Date().toISOString().split('T')[0],
+          type: 'coordination', // simplified for demo
+          participants: ['Irakasleak'],
+          status: 'completed',
+          summary: newMeetingSummary
+      };
+      setMeetings([newMeeting, ...meetings]);
+      setShowMeetingModal(false);
+      setNewMeetingSummary('');
+  };
+
   const handleAddAssignment = () => {
     const newId = `a${assignments.length + 1}`;
     const newAssignment: Assignment = {
@@ -139,6 +235,16 @@ const App: React.FC = () => {
     
     setExercises([newExercise, ...exercises]);
     setShowCreateModal(false);
+  };
+
+  const handleAddBankExercise = (ex: BankExercise) => {
+    if (!selectedBankExercises.find(e => e.id === ex.id)) {
+      setSelectedBankExercises([...selectedBankExercises, ex]);
+    }
+  };
+
+  const handleRemoveBankExercise = (id: string) => {
+    setSelectedBankExercises(selectedBankExercises.filter(e => e.id !== id));
   };
 
   // -------------------------
@@ -227,6 +333,154 @@ const App: React.FC = () => {
             </div>
          </div>
       </div>
+    );
+  };
+
+  // -------------------------
+  // Meetings View Renderer
+  // -------------------------
+  const renderMeetingsView = () => {
+    return (
+        <div className="animate-in fade-in duration-500">
+             <div className="flex justify-between items-center mb-6">
+                <div>
+                   <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                       <MessageSquare className="w-6 h-6 text-indigo-600" />
+                       Bilerak eta Aktak
+                   </h2>
+                   <p className="text-slate-500 text-sm mt-1">Grabatu audioa edo igo aktak laburpenak automatikoki sortzeko.</p>
+                </div>
+                <button 
+                  onClick={() => setShowMeetingModal(true)}
+                  className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-700 flex items-center gap-2 transition-all hover:shadow-md"
+                >
+                   <Plus className="w-4 h-4" /> 
+                   Bilera Berria
+                </button>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {meetings.map((meeting) => (
+                    <div key={meeting.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col h-full group">
+                        <div className="flex justify-between items-start mb-3">
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider
+                                ${meeting.type === 'coordination' ? 'bg-blue-100 text-blue-700' : 
+                                  meeting.type === 'parents' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}
+                            `}>
+                                {meeting.type === 'coordination' ? 'Koordinazioa' : meeting.type === 'parents' ? 'Gurasoak' : 'Saila'}
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium">{meeting.date}</span>
+                        </div>
+                        <h3 className="font-bold text-slate-800 text-lg mb-2 group-hover:text-indigo-600 transition-colors">{meeting.title}</h3>
+                        <p className="text-sm text-slate-600 line-clamp-4 flex-1 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            {meeting.summary || "Laburpenik gabe..."}
+                        </p>
+                        
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
+                            <div className="flex -space-x-2">
+                                {meeting.participants.map((p, i) => (
+                                    <div key={i} className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[8px] font-bold text-slate-600">
+                                        {p[0]}
+                                    </div>
+                                ))}
+                            </div>
+                            <button className="text-indigo-600 text-sm font-semibold hover:underline flex items-center gap-1">
+                                Ikusi Akta <ArrowLeft className="w-3 h-3 rotate-180" />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+
+                {/* Empty State / Add New Card */}
+                <button 
+                  onClick={() => setShowMeetingModal(true)}
+                  className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all min-h-[250px]"
+                >
+                    <div className="p-4 bg-slate-50 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                        <Mic className="w-8 h-8" />
+                    </div>
+                    <span className="font-bold text-sm">Hasi Grabaketa edo Igo Audioa</span>
+                    <span className="text-xs mt-1 opacity-70">AI Laburpena sortzeko</span>
+                </button>
+             </div>
+
+             {/* Modal */}
+             {showMeetingModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">Bilera Berria Erregistratu</h3>
+                                <p className="text-sm text-slate-500">Igo audioa edo idatzi oharrak.</p>
+                            </div>
+                            <button onClick={() => setShowMeetingModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
+                        </div>
+                        
+                        <form onSubmit={handleCreateMeeting} className="p-6 overflow-y-auto space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Bileraren Izenburua</label>
+                                    <input name="title" required type="text" placeholder="Adib: Ebaluazio Batzordea" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Data</label>
+                                    <input name="date" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                                </div>
+                            </div>
+
+                            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                                <label className="block text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                    <Bot className="w-4 h-4 text-purple-600" />
+                                    Sortu Akta Automatikoki
+                                </label>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div 
+                                      className="border-2 border-dashed border-purple-200 bg-white rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-purple-50 transition-colors"
+                                      onClick={generateMeetingSummary}
+                                    >
+                                        <Mic className={`w-8 h-8 text-purple-500 mb-2 ${isTranscribing ? 'animate-pulse' : ''}`} />
+                                        <span className="text-sm font-bold text-purple-700">Audioa Grabatu</span>
+                                        <span className="text-xs text-slate-400">Mikrofonoa erabili</span>
+                                    </div>
+                                    <div 
+                                      className="border-2 border-dashed border-indigo-200 bg-white rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-indigo-50 transition-colors"
+                                      onClick={generateMeetingSummary}
+                                    >
+                                        <FileAudio className="w-8 h-8 text-indigo-500 mb-2" />
+                                        <span className="text-sm font-bold text-indigo-700">Igo Artxiboa</span>
+                                        <span className="text-xs text-slate-400">MP3, WAV, M4A</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">
+                                    {isTranscribing ? 'AI Laburpena sortzen...' : 'Bileraren Laburpena / Akta'}
+                                </label>
+                                <textarea 
+                                    value={newMeetingSummary}
+                                    onChange={(e) => setNewMeetingSummary(e.target.value)}
+                                    rows={8}
+                                    className={`w-full p-4 border rounded-lg text-sm leading-relaxed focus:ring-2 focus:ring-indigo-500 outline-none transition-all
+                                        ${isTranscribing ? 'bg-slate-50 text-slate-400 animate-pulse border-slate-200' : 'bg-white border-slate-300 text-slate-700'}
+                                    `}
+                                    placeholder="Hemen agertuko da sortutako laburpena edo eskuz idatzi dezakezu..."
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button type="button" onClick={() => setShowMeetingModal(false)} className="px-5 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Utzi</button>
+                                <button type="submit" className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-sm flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Gorde Bilera
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+             )}
+        </div>
     );
   };
 
@@ -542,6 +796,190 @@ const App: React.FC = () => {
     );
   };
 
+  const renderExerciseBankBuilder = () => {
+    // Filter available areas based on selected subject
+    const availableAreas = builderSubject ? Object.keys(SUBJECT_HIERARCHY[builderSubject] || {}) : [];
+    // Filter available topics based on selected area
+    const availableTopics = (builderSubject && builderArea) ? SUBJECT_HIERARCHY[builderSubject][builderArea] || [] : [];
+    
+    // Filter exercises from the bank
+    const filteredBankExercises = BANK_EXERCISES.filter(ex => {
+       if (builderSubject && ex.subject !== builderSubject) return false;
+       if (builderArea && ex.area !== builderArea) return false;
+       if (builderTopic && ex.topic !== builderTopic) return false;
+       return true;
+    });
+
+    return (
+       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-8">
+           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+               <div className="p-2 bg-indigo-100 rounded-lg text-indigo-700">
+                   <Database className="w-6 h-6" />
+               </div>
+               <div>
+                   <h3 className="text-xl font-bold text-slate-800">Sortu zure ariketa / Datu Bankua</h3>
+                   <p className="text-sm text-slate-500">Bilatu ariketak ikasgai, alor eta gaiaren arabera.</p>
+               </div>
+           </div>
+
+           <div className="flex flex-col lg:flex-row gap-8">
+               {/* FILTERS COLUMN */}
+               <div className="lg:w-1/3 space-y-5">
+                   <div>
+                       <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                           <Book className="w-4 h-4 text-slate-400" />
+                           1. Aukeratu Ikasgaia
+                       </label>
+                       <select 
+                           value={builderSubject}
+                           onChange={(e) => {
+                               setBuilderSubject(e.target.value);
+                               setBuilderArea('');
+                               setBuilderTopic('');
+                           }}
+                           className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                       >
+                           <option value="">Aukeratu ikasgaia...</option>
+                           {Object.keys(SUBJECT_HIERARCHY).map(sub => (
+                               <option key={sub} value={sub}>{sub}</option>
+                           ))}
+                       </select>
+                   </div>
+
+                   <div>
+                       <label className={`block text-sm font-bold mb-2 flex items-center gap-2 ${!builderSubject ? 'text-slate-400' : 'text-slate-700'}`}>
+                           <Layers className="w-4 h-4" />
+                           2. Aukeratu Alorra
+                       </label>
+                       <select 
+                           value={builderArea}
+                           onChange={(e) => {
+                               setBuilderArea(e.target.value);
+                               setBuilderTopic('');
+                           }}
+                           disabled={!builderSubject}
+                           className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:opacity-50"
+                       >
+                           <option value="">Aukeratu alorra...</option>
+                           {availableAreas.map(area => (
+                               <option key={area} value={area}>{area}</option>
+                           ))}
+                       </select>
+                   </div>
+
+                   <div>
+                       <label className={`block text-sm font-bold mb-2 flex items-center gap-2 ${!builderArea ? 'text-slate-400' : 'text-slate-700'}`}>
+                           <Filter className="w-4 h-4" />
+                           3. Aukeratu Gaia
+                       </label>
+                       <select 
+                           value={builderTopic}
+                           onChange={(e) => setBuilderTopic(e.target.value)}
+                           disabled={!builderArea}
+                           className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:opacity-50"
+                       >
+                           <option value="">Aukeratu gaia...</option>
+                           {availableTopics.map((topic: string) => (
+                               <option key={topic} value={topic}>{topic}</option>
+                           ))}
+                       </select>
+                   </div>
+
+                   {/* RESULTS LIST MINI */}
+                   <div className="mt-6 pt-4 border-t border-slate-100">
+                       <h4 className="font-bold text-slate-800 text-sm mb-3">Emaitzak ({filteredBankExercises.length})</h4>
+                       <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                           {filteredBankExercises.length === 0 ? (
+                               <p className="text-xs text-slate-400 italic">Ez da ariketarik aurkitu irizpide hauekin.</p>
+                           ) : (
+                               filteredBankExercises.map(ex => (
+                                   <div key={ex.id} className="p-3 border border-slate-200 rounded-lg hover:bg-slate-50 flex justify-between items-center group">
+                                       <div className="flex-1 min-w-0 mr-2">
+                                           <p className="text-sm font-bold text-slate-700 truncate">{ex.title}</p>
+                                           <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                               ex.difficulty === 'Erraza' ? 'bg-emerald-100 text-emerald-700' : 
+                                               ex.difficulty === 'Ertaina' ? 'bg-amber-100 text-amber-700' : 
+                                               'bg-rose-100 text-rose-700'
+                                           }`}>
+                                               {ex.difficulty}
+                                           </span>
+                                       </div>
+                                       <button 
+                                           onClick={() => handleAddBankExercise(ex)}
+                                           className="p-1.5 bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-600 hover:text-white transition-colors"
+                                       >
+                                           <Plus className="w-4 h-4" />
+                                       </button>
+                                   </div>
+                               ))
+                           )}
+                       </div>
+                   </div>
+               </div>
+
+               {/* SELECTED EXERCISES "CART" */}
+               <div className="lg:w-2/3 bg-slate-50 rounded-xl p-5 border border-slate-200 flex flex-col">
+                   <div className="flex justify-between items-center mb-4">
+                       <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                           <Library className="w-5 h-5 text-indigo-600" />
+                           Zure Ariketa Sorta ({selectedBankExercises.length})
+                       </h4>
+                       <button 
+                           onClick={() => setSelectedBankExercises([])}
+                           disabled={selectedBankExercises.length === 0}
+                           className="text-xs text-rose-600 hover:text-rose-800 font-medium disabled:opacity-0 transition-opacity"
+                       >
+                           Garbitu zerrenda
+                       </button>
+                   </div>
+
+                   <div className="flex-1 overflow-y-auto space-y-3 min-h-[300px] mb-4 bg-white rounded-lg border border-slate-200 p-4 shadow-inner">
+                       {selectedBankExercises.length === 0 ? (
+                           <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                               <Layers className="w-12 h-12 mb-3 opacity-20" />
+                               <p className="text-sm">Zure saskia hutsik dago.</p>
+                               <p className="text-xs mt-1">Aukeratu ariketak ezkerreko menuan.</p>
+                           </div>
+                       ) : (
+                           selectedBankExercises.map((ex, index) => (
+                               <div key={`${ex.id}-${index}`} className="flex items-start gap-4 p-4 border border-slate-100 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow relative group">
+                                   <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 mt-0.5">
+                                       {index + 1}
+                                   </div>
+                                   <div className="flex-1">
+                                       <div className="flex items-center gap-2 mb-1">
+                                           <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 px-1.5 rounded">{ex.subject}</span>
+                                           <span className="text-[10px] text-slate-400">•</span>
+                                           <span className="text-[10px] text-slate-500">{ex.area} / {ex.topic}</span>
+                                       </div>
+                                       <h5 className="font-bold text-slate-800">{ex.title}</h5>
+                                   </div>
+                                   <button 
+                                       onClick={() => handleRemoveBankExercise(ex.id)}
+                                       className="text-slate-300 hover:text-rose-500 p-2 transition-colors"
+                                   >
+                                       <Trash2 className="w-4 h-4" />
+                                   </button>
+                               </div>
+                           ))
+                       )}
+                   </div>
+
+                   <div className="flex justify-end pt-4 border-t border-slate-200">
+                       <button 
+                           disabled={selectedBankExercises.length === 0}
+                           className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                       >
+                           <Save className="w-4 h-4" />
+                           Gorde eta Sortu PDF
+                       </button>
+                   </div>
+               </div>
+           </div>
+       </div>
+    );
+  };
+
   const renderSubjectsSection = () => {
     // If a subject is selected, show the detail view
     if (selectedSubject) {
@@ -557,7 +995,7 @@ const App: React.FC = () => {
     ];
 
     return (
-        <div className="animate-in fade-in duration-500">
+        <div className="animate-in fade-in duration-500 pb-10">
             <div className="mb-8">
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                     <BookOpen className="w-6 h-6 text-indigo-600" />
@@ -566,7 +1004,7 @@ const App: React.FC = () => {
                 <p className="text-slate-500 text-sm mt-1">Aukeratu kudeatu nahi duzun irakasgaia.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
                 {subjects.map((subject) => (
                     <div 
                         key={subject.name} 
@@ -597,567 +1035,601 @@ const App: React.FC = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Exercise Bank Section */}
+            {renderExerciseBankBuilder()}
         </div>
     );
   };
 
   const renderStudentsView = () => {
-    // Sort students alphabetically by surname
-    const sortedStudents = [...selectedClass.students].sort((a, b) => {
-        const surnameA = a.name.split(' ').slice(-1)[0];
-        const surnameB = b.name.split(' ').slice(-1)[0];
-        return surnameA.localeCompare(surnameB);
-    });
+    if (selectedStudentId) {
+       const student = selectedClass.students.find(s => s.id === selectedStudentId);
+       if (!student) return null;
 
-    const activeStudent = selectedStudentId 
-        ? sortedStudents.find(s => s.id === selectedStudentId) 
-        : sortedStudents[0];
+       // Mock data for student charts
+       const studentSubjects = ['Matematika', 'Euskara', 'Ingelesa', 'Ingurunea', 'Gaztelera'];
+       const performanceData = [
+          { name: '1. Eb', classAvg: 6.5, target: 7 },
+          { name: 'Zatikiak', classAvg: 7.2, target: 7 },
+          { name: 'Problemak', classAvg: 5.8, target: 7 },
+          { name: 'Kalkulua', classAvg: 8.1, target: 7 },
+          { name: 'Geometria', classAvg: 7.5, target: 7 },
+       ];
+       const distributionData = [
+          { name: '0-4', value: 3, color: '#f43f5e' },
+          { name: '5-6', value: 8, color: '#f59e0b' },
+          { name: '7-8', value: 10, color: '#3b82f6' },
+          { name: '9-10', value: 4, color: '#10b981' },
+       ];
+       const skillsData = [
+          { name: 'Arrazoiketa', score: 65 },
+          { name: 'Kalkulua', score: 85 },
+          { name: 'Kontzeptuak', score: 70 },
+          { name: 'Jarrera', score: 90 },
+       ];
+       
+       // Mock Data for Sociogram
+       const sociogramData = [
+         { date: 'Iraila', score: 6.5 },
+         { date: 'Urria', score: 7.0 },
+         { date: 'Azaroa', score: 7.8 },
+         { date: 'Abendua', score: 8.2 },
+         { date: 'Urtarrila', score: 8.0 },
+       ];
 
-    // Use Mock Data if the selected student
-    const stats = activeStudent?.id === '1' ? MOCK_STUDENT_STATS : {
-        ...MOCK_STUDENT_STATS, 
-        name: activeStudent?.name || '', 
-        photoUrl: activeStudent?.photoUrl,
-        evolution: MOCK_STUDENT_STATS.evolution.map(e => ({...e, grade: Math.max(4, e.grade - Math.random() * 2)}))
-    };
+       return (
+         <div className="animate-in fade-in slide-in-from-right-8 duration-500">
+            <button 
+              onClick={() => {
+                setSelectedStudentId(null);
+                setStudentViewMode('general');
+              }}
+              className="mb-6 flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Ikasleen zerrendara itzuli
+            </button>
 
-    const studentSubjects = ['Matematika', 'Euskara', 'Ingelesa', 'Ingurunea', 'Gaztelera'];
-
-    // Mock Data for Analytics in Students > Subject View
-    const performanceData = [
-      { name: '1. Eb', classAvg: 6.5, target: 7 },
-      { name: 'Zatikiak', classAvg: 7.2, target: 7 },
-      { name: 'Problemak', classAvg: 5.8, target: 7 },
-      { name: 'Kalkulua', classAvg: 8.1, target: 7 },
-      { name: 'Geometria', classAvg: 7.5, target: 7 },
-    ];
-
-    const distributionData = [
-      { name: '0-4', value: 3, color: '#f43f5e' },
-      { name: '5-6', value: 8, color: '#f59e0b' },
-      { name: '7-8', value: 10, color: '#3b82f6' },
-      { name: '9-10', value: 4, color: '#10b981' },
-    ];
-
-    const skillsData = [
-      { name: 'Arrazoiketa', score: 65 },
-      { name: 'Kalkulua', score: 85 },
-      { name: 'Kontzeptuak', score: 70 },
-      { name: 'Jarrera', score: 90 },
-    ];
-
-    return (
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] animate-in fade-in slide-in-from-bottom-4">
-            {/* Student List Sidebar */}
-            <div className="lg:w-1/4 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-100 bg-slate-50">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                        <input 
-                            type="text" 
-                            placeholder="Bilatu ikaslea..." 
-                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        />
+            {/* Student Header Card - Always Visible */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center justify-between mb-8">
+               <div className="flex items-center gap-6">
+                    <img 
+                      src={student.photoUrl} 
+                      className="w-20 h-20 rounded-full border-4 border-slate-50 object-cover shadow-sm" 
+                    />
+                    <div>
+                       <h2 className="text-2xl font-bold text-slate-800">{student.name}</h2>
+                       <div className="flex gap-4 mt-2 text-sm text-slate-500">
+                           <span className="flex items-center gap-1"><GraduationCap className="w-4 h-4" /> LH 5. Maila</span>
+                           <span className="flex items-center gap-1"><Users className="w-4 h-4" /> Taldea: A</span>
+                       </div>
                     </div>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                    {sortedStudents.map(student => (
-                        <div 
-                            key={student.id}
-                            onClick={() => {
-                                setSelectedStudentId(student.id);
-                                setStudentViewMode('general'); // Reset to general when changing student
-                                setTeacherNote(''); // Reset note to simulate fresh state or fetch
-                            }}
-                            className={`flex items-center gap-3 p-3 border-b border-slate-50 cursor-pointer transition-colors
-                                ${activeStudent?.id === student.id ? 'bg-indigo-50 border-indigo-100' : 'hover:bg-slate-50'}
-                            `}
-                        >
-                            <img 
-                                src={student.photoUrl || `https://ui-avatars.com/api/?name=${student.name}&background=random`} 
-                                alt={student.name}
-                                className="w-10 h-10 rounded-full object-cover border border-slate-200"
-                            />
-                            <div>
-                                <p className={`text-sm font-bold ${activeStudent?.id === student.id ? 'text-indigo-800' : 'text-slate-700'}`}>
-                                    {student.name}
-                                </p>
-                                <p className="text-xs text-slate-500">LH 5.A</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+               </div>
+               
+               <div className="flex gap-3">
+                   <button 
+                      onClick={() => setStudentViewMode('general')}
+                      className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2
+                         ${studentViewMode === 'general' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                      `}
+                   >
+                       <Layout className="w-4 h-4" />
+                       Orokorra
+                   </button>
+                   <button 
+                      onClick={() => setStudentViewMode('subjects')}
+                      className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2
+                         ${studentViewMode === 'subjects' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                      `}
+                   >
+                       <Table className="w-4 h-4" />
+                       Kalifikazioak
+                   </button>
+                   <button 
+                      onClick={() => setStudentViewMode('sociogram')}
+                      className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2
+                         ${studentViewMode === 'sociogram' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                      `}
+                   >
+                       <Network className="w-4 h-4" />
+                       Soziograma
+                   </button>
+               </div>
             </div>
 
-            {/* Main Profile Area */}
-            <div className="lg:w-3/4 flex flex-col gap-6 overflow-y-auto pr-2">
-                
-                {/* Header Card with Navigation Toggle */}
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between">
-                    <div className="flex items-center gap-6">
-                         <img 
-                            src={stats.photoUrl || ""} 
-                            alt={stats.name}
-                            className="w-20 h-20 rounded-full object-cover border-4 border-slate-100 shadow-sm"
-                        />
-                        <div>
-                            <h2 className="text-2xl font-bold text-slate-800">{stats.name}</h2>
-                            <div className="flex gap-4 mt-2 text-sm text-slate-500">
-                                <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> 2013/05/14</span>
-                                <span className="flex items-center gap-1"><Users className="w-4 h-4" /> Taldea: A</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end gap-3">
-                         <button 
-                            onClick={() => setStudentViewMode(studentViewMode === 'general' ? 'subjects' : 'general')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm
-                                ${studentViewMode === 'subjects' 
-                                    ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
-                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}
-                            `}
-                         >
-                            {studentViewMode === 'general' ? (
-                                <>
-                                    <Layout className="w-4 h-4" />
-                                    Ikasgaika
-                                </>
-                            ) : (
-                                <>
-                                    <ArrowLeft className="w-4 h-4" />
-                                    Orokorra
-                                </>
-                            )}
-                         </button>
-                         <p className="text-3xl font-bold text-indigo-600">7.2 <span className="text-xs text-slate-400 font-normal uppercase tracking-wide">B.B.</span></p>
-                    </div>
-                </div>
+            {studentViewMode === 'general' ? (
+                // --- GENERAL VIEW (Charts + Notes) ---
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                   <div className="xl:col-span-1 space-y-6">
+                      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-purple-500" />
+                            AI Irakasle Laguntzailea
+                          </h3>
+                          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                             <textarea 
+                                value={teacherNote}
+                                onChange={(e) => setTeacherNote(e.target.value)}
+                                className="w-full bg-transparent border-none p-0 text-sm text-slate-600 focus:ring-0 resize-none h-32 leading-relaxed"
+                                placeholder="Idatzi oharrak hemen..."
+                             />
+                          </div>
+                          <button 
+                            onClick={generateReport}
+                            disabled={isAiGenerating}
+                            className="w-full mt-4 bg-indigo-600 text-white py-2 rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                          >
+                             {isAiGenerating ? <Sparkles className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                             Txostena Sortu
+                          </button>
+                      </div>
+                   </div>
 
-                {/* Content based on Mode */}
-                {studentViewMode === 'general' ? (
-                    <>
-                        {/* Charts Row */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Evolution Chart */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <TrendingUp className="w-5 h-5 text-emerald-500" />
-                                    Bilakaera Akademikoa (Orokorra)
-                                </h3>
-                                <div className="h-64 w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={stats.evolution}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                                            <YAxis domain={[0, 10]} axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                                            <Tooltip 
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Line type="monotone" dataKey="grade" stroke="#6366f1" strokeWidth={3} dot={{r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff'}} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
+                   <div className="xl:col-span-2 space-y-6">
+                       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                          <div className="flex justify-between items-center mb-6">
+                             <h3 className="font-bold text-slate-800">Bilakaera Akademikoa</h3>
+                             <select className="text-sm bg-slate-50 border-slate-200 rounded-lg px-3 py-1">
+                                <option>Ikasturte osoa</option>
+                                <option>1. Hiruhilekoa</option>
+                             </select>
+                          </div>
+                          <div className="h-64">
+                              <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={MOCK_STUDENT_STATS.evolution}>
+                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+                                      <YAxis domain={[0, 10]} axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+                                      <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                                      <Line type="monotone" dataKey="grade" stroke="#6366f1" strokeWidth={4} dot={{r: 4, strokeWidth: 0, fill: '#6366f1'}} activeDot={{r: 6, strokeWidth: 0}} />
+                                  </LineChart>
+                              </ResponsiveContainer>
+                          </div>
+                       </div>
 
-                            {/* Strengths & Weaknesses */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <Puzzle className="w-5 h-5 text-indigo-500" />
-                                    Gaitasun Analisia
-                                </h3>
-                                <div className="flex-1 grid grid-cols-2 gap-4">
-                                    <div className="bg-rose-50 rounded-xl p-4">
-                                        <h4 className="font-bold text-rose-700 mb-3 text-sm uppercase flex items-center gap-2">
-                                            <AlertCircle className="w-4 h-4" /> Ahulguneak
-                                        </h4>
-                                        <ul className="space-y-2">
-                                            {stats.weaknesses.map((w, i) => (
-                                                <li key={i} className="text-sm text-rose-800 bg-white/50 px-2 py-1.5 rounded flex items-start gap-2">
-                                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0"></span>
-                                                    {w}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    <div className="bg-emerald-50 rounded-xl p-4">
-                                        <h4 className="font-bold text-emerald-700 mb-3 text-sm uppercase flex items-center gap-2">
-                                            <CheckSquare className="w-4 h-4" /> Indarguneak
-                                        </h4>
-                                        <ul className="space-y-2">
-                                            {stats.strengths.map((s, i) => (
-                                                <li key={i} className="text-sm text-emerald-800 bg-white/50 px-2 py-1.5 rounded flex items-start gap-2">
-                                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
-                                                    {s}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* FULL WIDTH Report Section with AI */}
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col flex-1 min-h-[300px]">
-                            <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                    <FileText className="w-5 h-5 text-slate-500" />
-                                    Txosten Pedagogikoa
-                                </h3>
-                                <div className="flex items-center gap-2">
-                                    <button 
-                                      onClick={generateReport}
-                                      disabled={isAiGenerating}
-                                      className="text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors flex items-center gap-2 border border-purple-100 disabled:opacity-50"
-                                    >
-                                        <Bot className={`w-4 h-4 ${isAiGenerating ? 'animate-pulse' : ''}`} />
-                                        {isAiGenerating ? 'Idazten...' : 'Sortu AI bidez'}
-                                    </button>
-                                    <button className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2">
-                                        <FileDown className="w-4 h-4" />
-                                        PDF
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div className="flex-1 flex flex-col gap-4">
-                                    <textarea 
-                                    className="w-full flex-1 p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all resize-none min-h-[150px]"
-                                    placeholder="Idatzi irakaslearen oharrak hemen..."
-                                    value={teacherNote}
-                                    onChange={(e) => setTeacherNote(e.target.value)}
-                                    ></textarea>
-
-                                    <div className="flex gap-4">
-                                        <div className="flex-1 border-2 border-dashed border-slate-200 rounded-lg p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 transition-colors">
-                                            <Upload className="w-6 h-6 text-slate-400 mb-2" />
-                                            <p className="text-xs font-medium text-slate-600">Erantsi dokumentuak</p>
-                                        </div>
-                                        <button className="px-8 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2">
-                                            <Save className="w-4 h-4" />
-                                            Gorde
-                                        </button>
-                                    </div>
-                            </div>
-                        </div>
-                    </>
-                ) : (
-                    // GRADEBOOK VIEW (Inside Students > Subjects)
-                    <div className="animate-in fade-in slide-in-from-right-4 space-y-6">
-                        {/* Subject Selector Buttons */}
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            {studentSubjects.map(sub => (
-                                <button
-                                    key={sub}
-                                    onClick={() => setSelectedStudentSubject(sub)}
-                                    className={`p-3 rounded-xl border text-center transition-all
-                                        ${selectedStudentSubject === sub 
-                                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold shadow-sm' 
-                                            : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-slate-50'}
-                                    `}
-                                >
-                                    {sub}
-                                </button>
-                            ))}
-                        </div>
-
-                         {/* 1. ROW: KPI CARDS */}
-                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                               <p className="text-xs font-bold text-slate-500 uppercase mb-1">Gelako Batez Bestekoa</p>
-                               <div className="flex items-end gap-2">
-                                  <span className="text-3xl font-bold text-indigo-600">7.8</span>
-                                  <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-1 rounded mb-1">▲ 0.3</span>
-                               </div>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                               <p className="text-xs font-bold text-slate-500 uppercase mb-1">Onartuen Tasa</p>
-                               <div className="flex items-end gap-2">
-                                  <span className="text-3xl font-bold text-emerald-600">88%</span>
-                                  <span className="text-xs text-slate-400 mb-1">21/24 Ikasle</span>
-                               </div>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                               <p className="text-xs font-bold text-slate-500 uppercase mb-1">Zailtasun Handiena</p>
-                               <div className="flex items-end gap-2">
-                                  <span className="text-xl font-bold text-rose-600">Problemak</span>
-                                  <span className="text-xs text-slate-400 mb-1">BB: 5.8</span>
-                               </div>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                               <p className="text-xs font-bold text-slate-500 uppercase mb-1">Hurrengo Froga</p>
-                               <div className="flex items-end gap-2">
-                                  <span className="text-xl font-bold text-slate-700">Ostirala</span>
-                                  <span className="text-xs text-slate-400 mb-1">Geometria</span>
-                               </div>
-                            </div>
-                         </div>
-
-                         {/* 2. ROW: CHARTS */}
-                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            
-                            {/* Chart A: Performance Trend */}
-                            <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                  <TrendingUp className="w-5 h-5 text-indigo-500" />
-                                  Emaitzen Eboluzioa (Gela vs Helburua)
+                                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                  Indarguneak
                                </h3>
-                               <div className="h-64">
+                               <div className="flex flex-wrap gap-2">
+                                  {MOCK_STUDENT_STATS.strengths.map((s, i) => (
+                                    <span key={i} className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-100">
+                                       {s}
+                                    </span>
+                                  ))}
+                               </div>
+                           </div>
+                           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                               <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                  <AlertCircle className="w-4 h-4 text-rose-500" />
+                                  Hobetzekoak
+                               </h3>
+                               <div className="flex flex-wrap gap-2">
+                                  {MOCK_STUDENT_STATS.weaknesses.map((s, i) => (
+                                    <span key={i} className="px-3 py-1.5 bg-rose-50 text-rose-700 rounded-lg text-xs font-bold border border-rose-100">
+                                       {s}
+                                    </span>
+                                  ))}
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+                </div>
+            ) : studentViewMode === 'sociogram' ? (
+                // --- SOCIOGRAM VIEW ---
+                <div className="animate-in fade-in slide-in-from-right-4 space-y-6">
+                   <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+                       <div className="flex items-center gap-3 mb-6">
+                          <div className="p-2 bg-purple-100 rounded-lg">
+                             <Network className="w-6 h-6 text-purple-600" />
+                          </div>
+                          <div>
+                              <h3 className="text-xl font-bold text-slate-800">Integrazio Soziala</h3>
+                              <p className="text-sm text-slate-500">Soziogramen emaitzen bilakaera ikasturtean zehar.</p>
+                          </div>
+                       </div>
+
+                       <div className="h-80 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={sociogramData}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                                  <YAxis domain={[0, 10]} axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                                  <Tooltip 
+                                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} 
+                                    itemStyle={{color: '#9333ea', fontWeight: 'bold'}}
+                                  />
+                                  <Line 
+                                    type="monotone" 
+                                    dataKey="score" 
+                                    name="Integrazioa"
+                                    stroke="#9333ea" 
+                                    strokeWidth={4} 
+                                    dot={{r: 6, strokeWidth: 2, fill: '#fff', stroke: '#9333ea'}} 
+                                    activeDot={{r: 8, strokeWidth: 0, fill: '#9333ea'}} 
+                                  />
+                              </LineChart>
+                          </ResponsiveContainer>
+                       </div>
+                       
+                       <div className="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-100 flex items-start gap-3">
+                           <Activity className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                           <p className="text-sm text-purple-900 leading-relaxed">
+                               <strong>Analisi Laburra:</strong> Ikaslearen integrazio maila nabarmen hobetu da azken hiruhilekoan. Talde dinamiketan parte hartze aktiboagoa erakusten du eta ikaskideekiko harremanak sendotu ditu.
+                           </p>
+                       </div>
+                   </div>
+                </div>
+            ) : (
+                // --- GRADEBOOK / SUBJECTS VIEW (Restored) ---
+                <div className="animate-in fade-in slide-in-from-right-4 space-y-6">
+                    {/* Subject Selector Buttons */}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {studentSubjects.map(sub => (
+                            <button
+                                key={sub}
+                                onClick={() => setSelectedStudentSubject(sub)}
+                                className={`p-3 rounded-xl border text-center transition-all
+                                    ${selectedStudentSubject === sub 
+                                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold shadow-sm' 
+                                        : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-slate-50'}
+                                `}
+                            >
+                                {sub}
+                            </button>
+                        ))}
+                    </div>
+
+                     {/* 1. ROW: KPI CARDS */}
+                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                           <p className="text-xs font-bold text-slate-500 uppercase mb-1">Gelako Batez Bestekoa</p>
+                           <div className="flex items-end gap-2">
+                              <span className="text-3xl font-bold text-indigo-600">7.8</span>
+                              <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-1 rounded mb-1">▲ 0.3</span>
+                           </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                           <p className="text-xs font-bold text-slate-500 uppercase mb-1">Onartuen Tasa</p>
+                           <div className="flex items-end gap-2">
+                              <span className="text-3xl font-bold text-emerald-600">88%</span>
+                              <span className="text-xs text-slate-400 mb-1">21/24 Ikasle</span>
+                           </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                           <p className="text-xs font-bold text-slate-500 uppercase mb-1">Zailtasun Handiena</p>
+                           <div className="flex items-end gap-2">
+                              <span className="text-xl font-bold text-rose-600">Problemak</span>
+                              <span className="text-xs text-slate-400 mb-1">BB: 5.8</span>
+                           </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                           <p className="text-xs font-bold text-slate-500 uppercase mb-1">Hurrengo Froga</p>
+                           <div className="flex items-end gap-2">
+                              <span className="text-xl font-bold text-slate-700">Ostirala</span>
+                              <span className="text-xs text-slate-400 mb-1">Geometria</span>
+                           </div>
+                        </div>
+                     </div>
+
+                     {/* 2. ROW: CHARTS */}
+                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        {/* Chart A: Performance Trend */}
+                        <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                           <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                              <TrendingUp className="w-5 h-5 text-indigo-500" />
+                              Emaitzen Eboluzioa (Gela vs Helburua)
+                           </h3>
+                           <div className="h-64">
+                              <ResponsiveContainer width="100%" height="100%">
+                                 <AreaChart data={performanceData}>
+                                    <defs>
+                                       <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                       </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                    <YAxis axisLine={false} tickLine={false} domain={[0, 10]} tick={{fontSize: 12, fill: '#64748b'}} />
+                                    <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                                    <Area type="monotone" dataKey="classAvg" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorAvg)" name="Gela BB" />
+                                    <Line type="monotone" dataKey="target" stroke="#cbd5e1" strokeDasharray="5 5" strokeWidth={2} dot={false} name="Helburua" />
+                                 </AreaChart>
+                              </ResponsiveContainer>
+                           </div>
+                        </div>
+
+                        {/* Chart B: Distribution & Skills */}
+                        <div className="flex flex-col gap-4">
+                            {/* Distribution Pie */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex-1">
+                               <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                  <PieChartIcon className="w-5 h-5 text-indigo-500" />
+                                  Nota Banaketa
+                               </h3>
+                               <div className="h-40 flex items-center justify-center">
                                   <ResponsiveContainer width="100%" height="100%">
-                                     <AreaChart data={performanceData}>
-                                        <defs>
-                                           <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
-                                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                              <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                           </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
-                                        <YAxis axisLine={false} tickLine={false} domain={[0, 10]} tick={{fontSize: 12, fill: '#64748b'}} />
-                                        <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                                        <Area type="monotone" dataKey="classAvg" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorAvg)" name="Gela BB" />
-                                        <Line type="monotone" dataKey="target" stroke="#cbd5e1" strokeDasharray="5 5" strokeWidth={2} dot={false} name="Helburua" />
-                                     </AreaChart>
+                                     <PieChart>
+                                        <Pie 
+                                           data={distributionData} 
+                                           innerRadius={40} 
+                                           outerRadius={60} 
+                                           paddingAngle={5} 
+                                           dataKey="value"
+                                        >
+                                           {distributionData.map((entry, index) => (
+                                              <Cell key={`cell-${index}`} fill={entry.color} />
+                                           ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend iconType="circle" wrapperStyle={{fontSize: '10px'}} />
+                                     </PieChart>
                                   </ResponsiveContainer>
                                </div>
                             </div>
+                            
+                            {/* Skills Progress */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col justify-center">
+                                 <h3 className="font-bold text-slate-800 mb-3 text-sm">Gaitasunen Garapena</h3>
+                                 <div className="space-y-3">
+                                    {skillsData.map(skill => (
+                                       <div key={skill.name}>
+                                          <div className="flex justify-between text-xs mb-1">
+                                             <span className="text-slate-600 font-medium">{skill.name}</span>
+                                             <span className="text-slate-800 font-bold">{skill.score}%</span>
+                                          </div>
+                                          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                             <div className="h-full bg-indigo-500 rounded-full" style={{width: `${skill.score}%`}}></div>
+                                          </div>
+                                       </div>
+                                    ))}
+                                 </div>
+                            </div>
+                        </div>
+                     </div>
 
-                            {/* Chart B: Distribution & Skills */}
-                            <div className="flex flex-col gap-4">
-                                {/* Distribution Pie */}
-                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex-1">
-                                   <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                                      <PieChartIcon className="w-5 h-5 text-indigo-500" />
-                                      Nota Banaketa
-                                   </h3>
-                                   <div className="h-40 flex items-center justify-center">
-                                      <ResponsiveContainer width="100%" height="100%">
-                                         <PieChart>
-                                            <Pie 
-                                               data={distributionData} 
-                                               innerRadius={40} 
-                                               outerRadius={60} 
-                                               paddingAngle={5} 
-                                               dataKey="value"
-                                            >
-                                               {distributionData.map((entry, index) => (
-                                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                               ))}
-                                            </Pie>
-                                            <Tooltip />
-                                            <Legend iconType="circle" wrapperStyle={{fontSize: '10px'}} />
-                                         </PieChart>
-                                      </ResponsiveContainer>
-                                   </div>
-                                </div>
-                                
-                                {/* Skills Progress */}
-                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col justify-center">
-                                     <h3 className="font-bold text-slate-800 mb-3 text-sm">Gaitasunen Garapena</h3>
-                                     <div className="space-y-3">
-                                        {skillsData.map(skill => (
-                                           <div key={skill.name}>
-                                              <div className="flex justify-between text-xs mb-1">
-                                                 <span className="text-slate-600 font-medium">{skill.name}</span>
-                                                 <span className="text-slate-800 font-bold">{skill.score}%</span>
-                                              </div>
-                                              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                 <div className="h-full bg-indigo-500 rounded-full" style={{width: `${skill.score}%`}}></div>
-                                              </div>
-                                           </div>
-                                        ))}
-                                     </div>
-                                </div>
+                     {/* 3. ROW: THE GRADEBOOK TABLE */}
+                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
+                       <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                         <div className="flex items-center gap-3">
+                            <Table className="w-5 h-5 text-indigo-600" />
+                            <div>
+                                <h3 className="font-bold text-slate-800">{selectedStudentSubject} - Kalifikazio Liburua</h3>
+                                <p className="text-xs text-slate-500">Ikasle guztien notak</p>
                             </div>
                          </div>
-
-                         {/* 3. ROW: THE GRADEBOOK TABLE */}
-                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
-                           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                             <div className="flex items-center gap-3">
-                                <Table className="w-5 h-5 text-indigo-600" />
-                                <div>
-                                    <h3 className="font-bold text-slate-800">{selectedStudentSubject} - Kalifikazio Liburua</h3>
-                                    <p className="text-xs text-slate-500">Ikasle guztien notak</p>
-                                </div>
-                             </div>
-                             <div className="flex gap-2">
-                                <button className="text-xs bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg font-medium text-slate-600 transition-colors">
-                                   Esportatu CSV
-                                </button>
-                                <button 
-                                    onClick={handleAddAssignment}
-                                    className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm"
-                                >
-                                    <Plus className="w-3 h-3" />
-                                    Gehitu Zutabea
-                                </button>
-                             </div>
-                           </div>
-
-                           <div className="overflow-auto flex-1">
-                             <table className="w-full text-sm text-left relative border-collapse">
-                               <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0 z-20 shadow-sm">
-                                 <tr>
-                                   <th className="px-6 py-4 sticky left-0 bg-slate-50 z-30 border-r border-slate-200 border-b min-w-[200px]">Ikaslea</th>
-                                   {assignments.map(assign => (
-                                     <th key={assign.id} className="px-4 py-3 min-w-[120px] border-b border-slate-200 text-center">
-                                       <div className="flex flex-col items-center">
-                                         <span className="font-bold">{assign.title}</span>
-                                         <span className="text-[10px] text-slate-400 font-normal">{assign.date}</span>
-                                       </div>
-                                     </th>
-                                   ))}
-                                   <th className="px-6 py-4 bg-indigo-50 text-indigo-700 text-center sticky right-0 border-l border-indigo-100 border-b z-20">Batez Bestekoa</th>
-                                 </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-100">
-                                 {selectedClass.students.map((student) => {
-                                   // Generate deterministic fake grades for demo
-                                   const mockGrades = assignments.map((ex, i) => {
-                                      const seed = student.name.length + ex.title.length + i;
-                                      return Math.min(10, Math.max(4, (seed % 5) + 5 + Math.random()));
-                                   });
-                                   const avg = mockGrades.reduce((a,b)=>a+b,0) / mockGrades.length;
-                                   const isSelected = student.id === selectedStudentId;
-                                   
-                                   return (
-                                     <tr key={student.id} className={`${isSelected ? 'bg-amber-50' : 'hover:bg-slate-50'}`}>
-                                       <td className={`px-6 py-3 font-medium text-slate-900 sticky left-0 z-10 border-r border-slate-100 flex items-center gap-3 ${isSelected ? 'bg-amber-50' : 'bg-white group-hover:bg-slate-50'}`}>
-                                          <div className={`w-1 h-8 rounded-full ${isSelected ? 'bg-amber-400' : 'bg-transparent'}`}></div>
-                                          <img src={student.photoUrl || `https://ui-avatars.com/api/?name=${student.name}`} className="w-8 h-8 rounded-full border border-slate-200" />
-                                          {student.name}
-                                       </td>
-                                       {mockGrades.map((grade, i) => (
-                                         <td key={i} className="px-4 py-3 text-center border-r border-slate-50">
-                                           <input 
-                                             type="number" 
-                                             defaultValue={grade.toFixed(1)}
-                                             max={10} min={0}
-                                             className={`w-14 px-1 py-1.5 rounded-lg border text-center font-bold text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all
-                                               ${grade < 5 ? 'text-rose-600 border-rose-200 bg-rose-50' : 'text-slate-700 border-slate-200 bg-white'}
-                                             `}
-                                           />
-                                         </td>
-                                       ))}
-                                       <td className={`px-6 py-3 text-center sticky right-0 border-l border-indigo-100 ${isSelected ? 'bg-amber-50' : 'bg-indigo-50/30'}`}>
-                                         <span className={`font-bold px-3 py-1 rounded-lg text-xs
-                                           ${avg >= 5 ? 'text-emerald-700 bg-emerald-100' : 'text-rose-700 bg-rose-100'}
-                                         `}>
-                                           {avg.toFixed(1)}
-                                         </span>
-                                       </td>
-                                     </tr>
-                                   );
-                                 })}
-                               </tbody>
-                             </table>
-                           </div>
+                         <div className="flex gap-2">
+                            <button className="text-xs bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg font-medium text-slate-600 transition-colors">
+                               Esportatu CSV
+                            </button>
+                            <button 
+                                onClick={handleAddAssignment}
+                                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm"
+                            >
+                                <Plus className="w-3 h-3" />
+                                Gehitu Zutabea
+                            </button>
                          </div>
-                    </div>
-                )}
+                       </div>
 
-            </div>
-        </div>
-    );
-  };
-
-  const renderContent = () => {
-    if (currentView === 'dashboard') {
-      return (
-        <>
-          {/* Welcome Message */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-slate-800">
-              Egun on, <span className="text-indigo-600">Irakaslea</span> 👋
-            </h1>
-            <p className="text-slate-500 mt-1">Hemen duzu gaurko laburpena.</p>
-          </div>
-
-          {/* Dashboard Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[minmax(300px,auto)]">
-            
-            {/* Top Row: Stats & Schedule */}
-            <div className="md:col-span-4 lg:col-span-3 h-[200px] md:h-auto">
-              <StatsCard grade={selectedClass.averageGrade} />
-            </div>
-
-            <div className="md:col-span-8 lg:col-span-9 h-[350px] md:h-auto">
-              <ScheduleWidget schedule={TODAY_SCHEDULE} />
-            </div>
-
-            {/* Bottom Row: Attendance & Agenda */}
-            <div className="md:col-span-7 lg:col-span-8 h-[500px]">
-              <AttendanceWidget students={selectedClass.students} />
-            </div>
-
-            <div className="md:col-span-5 lg:col-span-4 h-[500px]">
-              <AgendaWidget tasks={INITIAL_TASKS} />
-            </div>
-
-          </div>
-        </>
-      );
+                       <div className="overflow-auto flex-1">
+                         <table className="w-full text-sm text-left relative border-collapse">
+                           <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0 z-20 shadow-sm">
+                             <tr>
+                               <th className="px-6 py-4 sticky left-0 bg-slate-50 z-30 border-r border-slate-200 border-b min-w-[200px]">Ikaslea</th>
+                               {assignments.map(assign => (
+                                 <th key={assign.id} className="px-4 py-3 min-w-[120px] border-b border-slate-200 text-center">
+                                   <div className="flex flex-col items-center">
+                                     <span className="font-bold">{assign.title}</span>
+                                     <span className="text-[10px] text-slate-400 font-normal">{assign.date}</span>
+                                   </div>
+                                 </th>
+                               ))}
+                               <th className="px-6 py-4 bg-indigo-50 text-indigo-700 text-center sticky right-0 border-l border-indigo-100 border-b z-20">Batez Bestekoa</th>
+                             </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-100">
+                             {selectedClass.students.map((s) => {
+                               // Generate deterministic fake grades for demo
+                               const mockGrades = assignments.map((ex, i) => {
+                                  const seed = s.name.length + ex.title.length + i;
+                                  return Math.min(10, Math.max(4, (seed % 5) + 5 + Math.random()));
+                               });
+                               const avg = mockGrades.reduce((a,b)=>a+b,0) / mockGrades.length;
+                               const isSelected = s.id === selectedStudentId;
+                               
+                               return (
+                                 <tr key={s.id} className={`${isSelected ? 'bg-amber-50' : 'hover:bg-slate-50'}`}>
+                                   <td className={`px-6 py-3 font-medium text-slate-900 sticky left-0 z-10 border-r border-slate-100 flex items-center gap-3 ${isSelected ? 'bg-amber-50' : 'bg-white group-hover:bg-slate-50'}`}>
+                                      <div className={`w-1 h-8 rounded-full ${isSelected ? 'bg-amber-400' : 'bg-transparent'}`}></div>
+                                      <img src={s.photoUrl || `https://ui-avatars.com/api/?name=${s.name}`} className="w-8 h-8 rounded-full border border-slate-200" />
+                                      {s.name}
+                                   </td>
+                                   {mockGrades.map((grade, i) => (
+                                     <td key={i} className="px-4 py-3 text-center border-r border-slate-50">
+                                       <input 
+                                         type="number" 
+                                         defaultValue={grade.toFixed(1)}
+                                         max={10} min={0}
+                                         className={`w-14 px-1 py-1.5 rounded-lg border text-center font-bold text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all
+                                           ${grade < 5 ? 'text-rose-600 border-rose-200 bg-rose-50' : 'text-slate-700 border-slate-200 bg-white'}
+                                         `}
+                                       />
+                                     </td>
+                                   ))}
+                                   <td className={`px-6 py-3 text-center sticky right-0 border-l border-indigo-100 ${isSelected ? 'bg-amber-50' : 'bg-indigo-50/30'}`}>
+                                     <span className={`font-bold px-3 py-1 rounded-lg text-xs
+                                       ${avg >= 5 ? 'text-emerald-700 bg-emerald-100' : 'text-rose-700 bg-rose-100'}
+                                     `}>
+                                       {avg.toFixed(1)}
+                                     </span>
+                                   </td>
+                                 </tr>
+                               );
+                             })}
+                           </tbody>
+                         </table>
+                       </div>
+                     </div>
+                </div>
+            )}
+         </div>
+       );
     }
-
-    if (currentView === 'subjects') {
-        return renderSubjectsSection(); 
-    }
-
-    if (currentView === 'students') {
-        return renderStudentsView();
-    }
-    
-    if (currentView === 'calendar') {
-        return renderCalendarView();
-    }
-
-    // Placeholder content for other views
-    let Icon = BookOpen;
-    if (currentView === 'settings') Icon = Settings;
 
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center p-8">
-        <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-          <Icon className="w-10 h-10 text-slate-400" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">{getViewTitle()}</h2>
-        <p className="text-slate-500 max-w-md">
-          Atal hau eraikitzen ari gara. Laster egongo da eskuragarri zure klaseak hobeto kudeatzeko.
-        </p>
+      <div className="animate-in fade-in duration-500">
+         <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <Users className="w-6 h-6 text-indigo-600" />
+              Ikasleen Zerrenda
+            </h2>
+            <div className="flex gap-2">
+               <button 
+                  onClick={() => alert("Soziograma bidalia ikasle guztiei!")}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-indigo-700 flex items-center gap-2"
+               >
+                  <Network className="w-4 h-4" />
+                  Soziograma Berria
+               </button>
+               <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
+                  <Layout className="w-5 h-5" />
+               </button>
+               <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
+                  <List className="w-5 h-5" />
+               </button>
+            </div>
+         </div>
+
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {selectedClass.students.map((student) => (
+               <div 
+                 key={student.id} 
+                 onClick={() => setSelectedStudentId(student.id)}
+                 className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all cursor-pointer group flex flex-col items-center text-center relative"
+               >
+                  <div className="absolute top-4 right-4">
+                     <div className={`w-2.5 h-2.5 rounded-full ${student.status === 'present' ? 'bg-emerald-500' : student.status === 'absent' ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
+                  </div>
+                  
+                  <img 
+                    src={student.photoUrl || `https://ui-avatars.com/api/?name=${student.name}`} 
+                    className="w-24 h-24 rounded-full mb-4 border-4 border-slate-50 group-hover:scale-105 transition-transform object-cover" 
+                  />
+                  <h3 className="font-bold text-slate-800 text-lg mb-1">{student.name}</h3>
+                  <p className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-1 rounded-full mb-4">
+                     LH 5. Maila
+                  </p>
+
+                  <div className="w-full grid grid-cols-2 gap-2 mt-auto">
+                     <div className="bg-slate-50 rounded-lg p-2">
+                        <span className="block text-xs text-slate-400 uppercase font-bold">Nota</span>
+                        <span className="font-bold text-indigo-600">7.5</span>
+                     </div>
+                     <div className="bg-slate-50 rounded-lg p-2">
+                        <span className="block text-xs text-slate-400 uppercase font-bold">Ariketak</span>
+                        <span className="font-bold text-indigo-600">85%</span>
+                     </div>
+                  </div>
+               </div>
+            ))}
+         </div>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-800 flex">
+    <div className="flex h-screen bg-slate-50/50 font-sans text-slate-600">
+      <Sidebar currentView={currentView} onNavigate={setCurrentView} />
       
-      {/* Sidebar Navigation */}
-      <Sidebar currentView={currentView} onNavigate={(view) => {
-        setCurrentView(view);
-        // Special Reset Logic
-        if (view !== 'subjects') setSelectedSubject(null);
-        if (view !== 'students') setStudentViewMode('general');
-      }} />
-
-      {/* Main Content Wrapper */}
-      <div className="flex-1 ml-64 flex flex-col min-w-0">
-        
-        {/* Top Header */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden ml-64">
         <Header 
           classes={MOCK_CLASSES} 
           selectedClassId={selectedClassId} 
           onSelectClass={setSelectedClassId}
           title={getViewTitle()}
         />
+        
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 lg:p-10">
+          <div className="max-w-7xl mx-auto h-full">
+            {currentView === 'dashboard' && (
+               <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-500">
+                  <div className="xl:col-span-2 space-y-8">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="h-80">
+                           <StatsCard grade={selectedClass.averageGrade} />
+                        </div>
+                        <div className="h-80">
+                           <AttendanceWidget students={selectedClass.students} />
+                        </div>
+                     </div>
+                     
+                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                       <div className="flex justify-between items-center mb-6">
+                          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                             <BarChart3 className="w-5 h-5 text-indigo-500" />
+                             Ikasgelaren Bilakaera
+                          </h3>
+                       </div>
+                       <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                             <AreaChart data={[
+                               { name: 'Ira', avg: 6.2 },
+                               { name: 'Urr', avg: 6.8 },
+                               { name: 'Aza', avg: 6.5 },
+                               { name: 'Abe', avg: 7.1 },
+                               { name: 'Urt', avg: 6.9 },
+                               { name: 'Ots', avg: 7.4 },
+                             ]}>
+                               <defs>
+                                 <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                                   <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                                   <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                 </linearGradient>
+                               </defs>
+                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+                               <YAxis domain={[0, 10]} axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+                               <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                               <Area type="monotone" dataKey="avg" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorAvg)" />
+                             </AreaChart>
+                          </ResponsiveContainer>
+                       </div>
+                     </div>
+                  </div>
 
-        {/* Scrollable Main Area */}
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-7xl mx-auto">
-            {renderContent()}
+                  <div className="space-y-8">
+                     <div className="h-96">
+                        <ScheduleWidget schedule={TODAY_SCHEDULE} />
+                     </div>
+                     <div className="h-96">
+                        <AgendaWidget tasks={INITIAL_TASKS} />
+                     </div>
+                  </div>
+               </div>
+            )}
+
+            {currentView === 'subjects' && renderSubjectsSection()}
+            {currentView === 'students' && renderStudentsView()}
+            {currentView === 'calendar' && renderCalendarView()}
+            {currentView === 'meetings' && renderMeetingsView()}
+            
+            {currentView === 'settings' && (
+               <div className="flex flex-col items-center justify-center h-[60vh] text-center animate-in fade-in zoom-in">
+                  <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                      <Settings className="w-10 h-10 text-slate-300" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-700 mb-2">Ezarpenak</h3>
+                  <p className="text-slate-400 max-w-sm">Atal hau garatzen ari da. Laster zure profilaren eta aplikazioaren ezarpenak aldatu ahal izango dituzu.</p>
+               </div>
+            )}
           </div>
         </main>
-
       </div>
     </div>
   );

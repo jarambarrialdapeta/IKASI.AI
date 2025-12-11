@@ -65,3 +65,14 @@ export interface CalendarEvent {
   date: string; // YYYY-MM-DD
   type: 'exam' | 'holiday' | 'assignment' | 'meeting';
 }
+
+// New Type for Meetings
+export interface Meeting {
+  id: string;
+  title: string;
+  date: string;
+  type: 'coordination' | 'parents' | 'department';
+  participants: string[];
+  summary?: string;
+  status: 'processing' | 'completed' | 'pending_upload';
+}
